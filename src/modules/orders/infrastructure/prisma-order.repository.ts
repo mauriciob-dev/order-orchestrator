@@ -2,18 +2,31 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { OrderRepository } from '../domain/order.repository';
 import { Order, OrderStatus } from '../domain/order.entity';
-
+import { Prisma } from '@prisma/client';
 @Injectable()
 export class PrismaOrderRepository implements OrderRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async save(order: Order): Promise<void> {
-    await this.prisma.order.create({
-      data: {
-        id: order.id,
-        status: order.getStatus(),
-        total: order.getTotal(),
-      },
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.order.create({
+        data: {
+          id: order.id,
+          status: order.getStatus(),
+          total: order.getTotal(),
+        },
+      });
+
+      await tx.outboxEvent.create({
+        data: {
+          aggregateId: order.id,
+          type: 'OrderCreated',
+          payload: {
+            orderId: order.id,
+            total: order.getTotal(),
+          },
+        },
+      });
     });
   }
 

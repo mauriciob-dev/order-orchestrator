@@ -16,6 +16,17 @@ model Order {
   @@index([status])
 }
 
+model OutboxEvent {
+  id          String    @id @default(uuid())
+  aggregateId String
+  type        String
+  payload     Json
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([processedAt])
+}
+
 enum OrderStatus {
   PENDING
   PAID
